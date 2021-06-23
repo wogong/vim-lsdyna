@@ -1,73 +1,74 @@
-#vim-lsdyna
+# vim-lsdyna
 [VIM](http://www.vim.org/) filetype plugin for [Ls-Dyna](http://www.lstc.com) FE solver.
 
-##Introduction
+## Introduction
 
-What is Ls-Dyna filetype plugin?
+The plugin make your work with Ls-Dyna keyword file as fast and as easy as possible.
 
-It's just bunch of scripts to speed up work with Ls-Dyna keyword file and VIM text editor.
-
-##Main features
+## Main features
 - Syntax highlighting
-- Folding
-- Keyword library
-- Useful mappings, functions and commands
+- Nodes/elements table folding
+- Omni-completion for keywords/options/ids/parameters
+- Keyword manager
+- Numerous commands to operate on model data
+- Useful mappings and functions
 
-###Syntax highlighting
-With color syntax it's easier to navigate through a keyword file.
+### Syntax highlighting
+Easy navigation with keyword file.
 
 ![syntax](https://raw.github.com/wiki/gradzikb/vim-lsdyna/gifs/syntax.gif)
 
-###Folding
-Node & element table folding, no more never ending scrolling!
+### Nodes/elements table folding
+No more never ending scrolling.
 
 ![folding](https://raw.github.com/wiki/gradzikb/vim-lsdyna/gifs/folding.gif)
 
-###Keyword library
-With keyword library you can very quick add a new Ls-Dyna keyword into your model.
+### Omni-completion
+Inserting of keywords/options/ids/parameters never was easier.
 
-![libraryb](https://raw.github.com/wiki/gradzikb/vim-lsdyna/gifs/library.gif)
+![omni-completion](https://raw.github.com/wiki/gradzikb/vim-lsdyna/gifs/omni-completion.gif)
 
+### Keyword manager
+One tool to rule them all.
 
-###Commands
-The plugin has many build-in commands to work with data directly for:
-- curves
-- nodes
-- elements
+![lsmanager](https://raw.github.com/wiki/gradzikb/vim-lsdyna/gifs/lsmanager.gif)
+
+### Commands/functions/mappings
+Many great features to update your model directly in VIM.
 
 ![commands](https://raw.github.com/wiki/gradzikb/vim-lsdyna/gifs/commands.gif)
 
+## Example
 
-###Commands, functions & mappings
-The plugin has couple of great functions to make your work even faster:
-- mappings
-- comment/uncomment
-- data line autoformating
-- keyword text objects
+The plugin in action you can see [here](https://www.youtube.com/watch?v=MY9qV8jrkDk&spfreload=10).
 
-##Example
+## Documentation
 
-The plugin in action you can see [here](https://www.youtube.com/watch?v=5a62UACiBA0&feature=youtu.be).
-
-##Documentation
-
-The plugin has decent [documentation](https://github.com/gradzikb/vim-lsdyna/blob/master/doc/lsdyna.txt) with detail explanation of all functions and examples.
-
-Please read the documentation before you start using the plugin.
+Please read [documentation](https://github.com/gradzikb/vim-lsdyna/blob/master/doc/lsdyna.txt) to get know all plugin features.
 
 `:help lsdyna`
 
-##Installation
+## Installation
 
-[Pathogen](https://github.com/tpope/vim-pathogen)
+The plugin required (g)VIM 8.2.1176 or higher.
 
+Installation with (g)VIM native package manager `:help packages`
+
+Windows:
 ```
-cd ~/.vim/bundle
+mkdir %USERPROFILE%\vimfiles\pack\cae_plugins\start\
+cd %USERPROFILE%\vimfiles\pack\cae_plugins\start\
+git clone https://github.com/gradzikb/vim-lsdyna
+```
+Linux
+```
+mkdir -p ~/.vim/pack/cae_plugins/start/
+cd ~/.vim/pack/cae_plugins/start/
 git clone https://github.com/gradzikb/vim-lsdyna
 ```
 
-##License
+## License
 
 The GNU General Public License
 
-Copyright &copy; 2014 Bartosz Gradzik
+Copyright &copy; 2021 Bartosz Gradzik

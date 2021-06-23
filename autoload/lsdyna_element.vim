@@ -5,11 +5,26 @@
 " Language:     VIM Script
 " Filetype:     LS-Dyna FE solver input file
 " Maintainer:   Bartosz Gradzik <bartosz.gradzik@hotmail.com>
-" Last Change:  12th of December 2016
-" Version:      1.0.1
+" Last Change:  6th of April 2017
+" Version:      1.1.3
 "
 " History of change:
 "
+" v1.1.3
+"   - FindPid function fixed
+" v1.1.2
+"   - offset function moved to lsdyna_offset
+" v1.1.2
+"   - element offset improved for *ELEMENT_BEAM
+"   - element offset improved for *ELEMENT_MASS
+" v1.1.1
+"   - FindPid function with no arguments works as SortPid function
+"   - SortPid function removed
+" v1.1.0
+"   - FindPid function added
+" v1.0.2
+"   - OffsetId function support new keywords:
+"     - *SET_
 " v1.0.1
 "   - OffsetId function support new keywords:
 "     - *AIRBAG_SHELL_REFERENCE_GEOMETRY
@@ -17,225 +32,6 @@
 " v1.0.0
 "   - initial version
 "
-"-------------------------------------------------------------------------------
-"
-function! lsdyna_element#OffsetId(line1, line2, ...)
-
-  "-----------------------------------------------------------------------------
-  " Function to offset Ls-Dyna node/element/part ids.
-  "
-  " Arguments:
-  " - a:line1  : first line of selection
-  " - a:line2  : last line of selection
-  " - ...      : user arguments (operation mode flag, offset)
-  " Return:
-  " - None
-  "-----------------------------------------------------------------------------
-
-  "-----------------------------------------------------------------------------
-
-  " user parameters setup
-  if a:0 == 1
-
-    " set default flag
-    let arg = "en"
-    " get user offset
-    let offset = str2nr(a:1)
-
-  elseif a:0 == 2
-
-    " get information what to renumber?
-    let argList = []
-    for i in range(0, len(a:1))
-      if a:1[i] =~? "[nep]"
-        call add(argList, a:1[i])
-      endif
-    endfor
-    let arg = join(sort(argList), "")
-
-    " get user offset
-    let offset = str2nr(a:2)
-
-  endif
-
-  "-----------------------------------------------------------------------------
-  " find keyword
-  call search('^\*[a-zA-Z]','bcW')
-  let keyword = getline('.')
-
-  "-----------------------------------------------------------------------------
-  if keyword =~? "^\*NODE\s*$" || keyword =~? "^\*AIRBAG_REFERENCE_GEOMETRY.*$"
-
-    for lnum in range(a:line1, a:line2)
-
-      " take current line
-      let line = getline(lnum)
-
-      " skip comment/keyword lines
-      if line =~? "^[$*]"
-        continue
-      endif
-
-      " dump line with new id
-      let newNid = str2nr(line[:7]) + offset
-      let newline = printf("%8s", newNid) . line[8:]
-      call setline(lnum, newline)
-
-    endfor
-
-  "-----------------------------------------------------------------------------
-  "
-  elseif keyword =~? "^\*ELEMENT_MASS\s*$"
-
-    for lnum in range(a:line1, a:line2)
-
-      " take current line
-      let line = getline(lnum)
-
-      " skip comment/keyword lines
-      if line =~? "^[$*]"
-        continue
-      endif
-
-      " offset only element id
-      if arg == "e"
-        let eid = str2nr(line[:7]) + offset
-        let nid = str2nr(line[8:15])
-        let pid = str2nr(line[33:])
-      " offset only node id
-      elseif arg == "n"
-        let eid = str2nr(line[:7])
-        let nid = str2nr(line[8:15]) + offset
-        let pid = str2nr(line[33:])
-      " offset node and element id
-      elseif arg == "p"
-        let eid = str2nr(line[:7])
-        let nid = str2nr(line[8:15])
-        let pid = str2nr(line[33:]) + offset
-      elseif arg == "en"
-        let eid = str2nr(line[:7]) + offset
-        let nid = str2nr(line[8:15]) + offset
-        let pid = str2nr(line[33:])
-      elseif arg == "ep"
-        let eid = str2nr(line[:7]) + offset
-        let nid = str2nr(line[8:15])
-        let pid = str2nr(line[33:]) + offset
-      elseif arg == "np"
-        let eid = str2nr(line[:7])
-        let nid = str2nr(line[8:15]) + offset
-        let pid = str2nr(line[33:]) + offset
-      elseif arg == "enp"
-        let eid = str2nr(line[:7]) + offset
-        let nid = str2nr(line[8:15]) + offset
-        let pid = str2nr(line[33:]) + offset
-      endif
-
-      " dump line with new id
-      let newline = printf("%8s%8s", eid, nid) . line[16:31] . printf("%8s", pid)
-      call setline(lnum, newline)
-
-    endfor
-
-  "-----------------------------------------------------------------------------
-
-  elseif keyword =~? "^\*ELEMENT_.*$" || keyword =~? "^\*AIRBAG_SHELL_REFERENCE_GEOMETRY.*$"
-
-    for lnum in range(a:line1, a:line2)
-
-      " get line
-      let line = getline(lnum)
-
-      " skip comment/keyword lines
-      if line =~? "^[$*]"
-        continue
-      endif
-
-      " take current line & remove trailing signs
-      let line = substitute(line, "\\s[ 0]*$", "", "")
-      " set line length
-      let llen = len(line)
-
-      " number of columns
-      let cnum = llen / 8
-
-      " loop over columns
-      for i in range(0, cnum-1, 1)
-
-        " slice index
-        let s = i * 8
-        " get line slice
-        let slice = strpart(line,s,8)
-
-        "-----------------------------------------------------------------------
-        " offset only nodes
-        if arg == "e"
-          if i == 0
-            let newId = str2nr(slice) + offset
-          else
-            let newId = slice
-          endif
-        " offset only elements
-        elseif arg == "n"
-          if i >= 2 && str2nr(slice) != 0
-            let newId = str2nr(slice) + offset
-          else
-            let newId = slice
-          endif
-        " offset only parts
-        elseif arg == "p"
-          if i == 1
-            let newId = str2nr(slice) + offset
-          else
-            let newId = slice
-          endif
-        " offset node/elements id
-        elseif arg == "en"
-          if i == 1 || str2nr(slice) == 0
-            let newId = slice
-          else
-            let newId = str2nr(slice) + offset
-          endif
-        " offset elements/parts id
-        elseif arg == "ep"
-          if i <= 1
-            let newId = str2nr(slice) + offset
-          else
-            let newId = slice
-          endif
-        " offset node/parts id
-        elseif arg == "np"
-          if i == 0 || str2nr(slice) == 0
-            let newId = slice
-          else
-            let newId = str2nr(slice) + offset
-          endif
-        " offset nodes/parts/elements id
-        elseif arg == "enp"
-            if str2nr(slice) == 0
-              let newId = slice
-            else
-              let newId = str2nr(slice) + offset
-            endif
-        endif
-        "-----------------------------------------------------------------------
-
-        " update line with new values
-        let line = strpart(line,0,s) . printf("%8s", newId) . strpart(line,s+8)
-
-      endfor
-
-      " dump new line
-      call setline(lnum, line)
-
-    endfor
-
-  endif
-
-  " restore cursor position
-  call cursor(a:line1, 0)
-
-endfunction
-
 "-------------------------------------------------------------------------------
 
 function! lsdyna_element#ChangePid(line1, line2, ...)
@@ -340,97 +136,98 @@ endfunction
 
 "-------------------------------------------------------------------------------
 
-function! lsdyna_element#Sort(line1, line2, ...)
+function! lsdyna_element#FindPid(line1, line2, ...)
+
+  " find keyword name
+  let kwName = getline(search('^\*','bcnW'))
+
+  " i10 format
+  if kwName =~? '%\s*$'
+    let a = 10
+    let z = 19
+  " i20 format
+  elseif kwName =~? '+\s*$'
+    let a = 20
+    let z = 39
+  " i8 format
+  else
+    let a = 8
+    let z = 15
+  endif
 
   "-----------------------------------------------------------------------------
-  " Function sort Ls-Dyna elements in order of part id.
-  "
-  " Arguments:
-  " - a:line1 : first line of selection
-  " - a:line2 : last line of selection
-  " - a:1     : user part id
-  " Return:
-  " - None
+  " get all element line data and collect them by part ids
+
+  let pids = {} " dict with elements grouped by part ids 
+  let lines = getline(a:line1, a:line2)
+  if kwName =~? 'THICKNESS\|BETA\|MCID\|OFFSET\|DOF\|COMPOSITE'
+    for i in range(0, len(lines)-1, 2)
+      let pid = trim(lines[i][a : z])
+      if !has_key(pids, pid) | let pids[pid] = [] | endif
+      call add(pids[pid], lines[i])
+      call add(pids[pid], lines[i+1])
+    endfor
+  else
+    for i in range(0, len(lines)-1, 1)
+      let pid = trim(lines[i][a : z])
+      if !has_key(pids, pid) | let pids[pid] = [] | endif
+      call add(pids[pid], lines[i])
+    endfor
+  endif
+
   "-----------------------------------------------------------------------------
+  " do stuff if no command arguments
+  if a:0 == 0
 
-  " sort lines respect to part id
-  execute a:line1 . ',' . a:line2 . 'sort /\%9c\(\s\|\d\)\{8}/ r'
+    " sort all elements lines by pid and write them to file
+    let lines_to_write = []
+    for key in sort(keys(pids))
+      call add(lines_to_write, '$ Part: '.key)
+      call extend(lines_to_write, pids[key])
+    endfor
+    execute a:line1.','.a:line2.'delete'
+    call append(a:line1-1, lines_to_write)
 
+  "-----------------------------------------------------------------------------
+  " do stuff if command arguments
+  else
 
-    " search for all part ids
-    if a:0 == 0
+    " take user pids from command arguments
+    " LsElemFindPid 1 5 10:20
+    let user_pids = []
+    for arg in a:000
+      if match(arg, ":") != -1
+        let ids = split(arg, ":")
+        for i in range(ids[0], ids[1])
+          call add(user_pids, i)
+        endfor
+      else
+        call add(user_pids, arg)
+      endif
+    endfor
 
-      " loop over element lines
-      let lnum = a:line1
-      let endline = a:line2
-      while (lnum <= endline)
+    let lines_to_write = [] " here I will store all lines to write to file
 
-        " write header for 1st part in the list
-        if (lnum == a:line1)
-          let str = '$ Part: ' . getline(lnum)[8:15]
-          call append(lnum-1, str)
-          let lnum += 1
-          continue
-        endif
+    " process pids I want to find
+    for key in sort(user_pids)
+      if has_key(pids, key)
+        call add(lines_to_write, '$ Part: '.key)
+        call extend(lines_to_write, pids[key])
+        call remove(pids, key)
+      endif
+    endfor 
 
-        " take current and next line
-        let line1 = getline(lnum)
-        let line2 = getline(lnum+1)
+    "process other pids
+    call add(lines_to_write, '$')
+    for key in keys(pids)
+      call extend(lines_to_write, pids[key])
+    endfor
 
-        " compare part ids and put header line if not the same
-        if (line1[8:15] !~? line2[8:15])
-          " add header with part id
-          let str = '$ Part: ' . line2[8:15]
-          call append(lnum, str)
-          " one more line to complete whole loop
-          let endline += 1
-          " two extra line to skip header I just added
-          let lnum += 2
-          continue
-        endif
+    " finally delete old lines and write a new ones
+    execute a:line1.','.a:line2.'delete'
+    call append(a:line1-1, lines_to_write)
 
-        " move to next line (not used if I added header)
-        let lnum += 1
-
-      endwhile
-
-    " search only for user part id
-    else
-
-      " user part id
-      let userPid = str2nr(a:1)
-
-      " loop over element lines
-      let lnum = a:line1
-      let endline = a:line2
-      let pid = 0
-      while (lnum <= endline)
-
-        " take line
-        let line1 = getline(lnum)
-
-        " compare part ids and put header line
-        if (pid ==0 && str2nr(line1[8:15]) == userPid)
-          " add header with part id
-          let str = '$ Part: ' . line1[8:15]
-          call append(lnum-1, str)
-          let pid = 1
-          " one more line to complete whole loop
-          let endline += 1
-        endif
-
-        " add end break
-        if (pid == 1 && line1[8:15] !~? a:1)
-          call append(lnum-1, '$')
-          break
-        endif
-
-        " move to next line (not if I added header)
-        let lnum += 1
-
-      endwhile
-
-    endif
+  endif
 
 endfunction
 
@@ -448,31 +245,43 @@ function! lsdyna_element#ReverseNormals(line1, line2)
   " - None
   "-----------------------------------------------------------------------------
 
+  " find keyword name
+  let kwName = getline(search('^\*','bcnW'))
+  " i10 format
+  if kwName =~? '%\s*$'
+    let len = 10
+    let format = '%10s%10s%10s%10s%10s%10s'
+  " i20 format
+  elseif kwName =~? '+\s*$'
+    let len = 20
+    let format = '%20s%20s%20s%20s%20s%20s'
+  " i8 format
+  else
+    let len = 8
+    let format = '%8s%8s%8s%8s%8s%8s'
+  endif
+
   " lines loop
   for lnum in range(a:line1, a:line2)
 
     " take current line
     let line = getline(lnum)
-
     " skip comment/keyword lines
-    if line =~? "^[$*]"
-      continue
-    endif
-
-    " get element definition
-    let eid = line[0:7]
-    let pid = line[8:15]
-    let n1  = line[16:23]
-    let n2  = line[24:31]
-    let n3  = line[32:39]
-    let n4  = line[40:47]
+    if line =~? "^[$*]" | continue | endif
+    " split lines into columns
+    let l = []
+    for i in range(0,5,1)
+      let l += [strpart(line, i*len, len)]
+    endfor
 
     " revers tria element
-    if str2nr(n3) == str2nr(n4)
-      let newline = printf("%8s%8s%8s%8s%8s%8s", eid, pid, n1, n3, n2, n2)
+    if str2nr(l[4]) == str2nr(l[5])
+      "let newline = printf(format, eid, pid, n1, n3, n2, n2)
+      let newline = printf(format, l[0], l[1], l[2], l[4], l[3], l[3])
     " revers quad element
     else
-      let newline = printf("%8s%8s%8s%8s%8s%8s", eid, pid, n1, n4, n3, n2)
+      "let newline = printf(format, eid, pid, n1, n4, n3, n2)
+      let newline = printf(format, l[0], l[1], l[2], l[5], l[4], l[3])
     endif
 
     " dump line with new element definition
@@ -482,6 +291,60 @@ function! lsdyna_element#ReverseNormals(line1, line2)
 
   " restore cursor position
   call cursor(a:line1, 0)
+
+endfunction
+
+"-------------------------------------------------------------------------------
+
+function! lsdyna_element#ConvertI8I10(line1, line2, ...) abort
+
+  "-----------------------------------------------------------------------------
+  " Function to convert I8 definition to I10.
+  "
+  " Arguments:
+  " - a:line1  : first line of selection
+  " - a:line2  : last line of selection
+  " - ...      : conversion type i8->i10 or i10->i8
+  " Return:
+  " - None
+  "-----------------------------------------------------------------------------
+
+  if a:0 == 0
+    echo 'Missing arguments.'
+    return
+  endif
+
+  " set column length
+  if a:1 == 'i10'
+    let clen = 8
+    let format = '%10s'
+  elseif a:1 == 'i8'
+    let clen = 10
+    let format = '%8s'
+  endif
+
+  " lines loop
+  for lnum in range(a:line1, a:line2)
+
+    let line = getline(lnum)
+    if line =~? '^\*ELEMENT'
+      silent execute 's/\s%\s*$//e'
+      if a:1 == 'i10'
+        execute "normal! A %\<ESC>"
+      endif
+    endif
+    if line =~? "^[$*]" | continue | endif
+
+    let new_line = ''
+    for i in range(8)
+      let col = strpart(line, i*clen, clen)
+      if empty(col) | break | endif " end of the line
+      let new_line ..= printf(format, trim(col))
+    endfor
+
+    call setline(lnum, new_line)
+
+  endfor
 
 endfunction
 
